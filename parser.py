@@ -1,7 +1,10 @@
 import sys
+import csv
+import time
 
 import requests
 from bs4 import BeautifulSoup
+from openpyxl import Workbook
 
 BASE_URL = "https://books.toscrape.com/catalogue/page-{}.html"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
@@ -48,16 +51,51 @@ def parse_page(html: str) -> list[dict]:
         )
     return books
 
-def main():
-    html = fetch_page(1)
-    if html is None:
-        print("Не удалось скачат страницу.")
+def save_csv(rows: list[dict], path: str) -> None:
+    with open(path, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def save_excel(rows: list[dict], path: str) -> None:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Книги"
+
+    headers = list(rows[0].keys())
+    ws.append(headers)
+    for row in rows:
+        ws.append(list(row.values()))
+
+    widths = [60, 12, 14, 12]
+    for col, width in zip("ABCD", widths):
+        ws.column_dimensions[col].width = width
+    ws.freeze_panes = "A2"
+
+    wb.save(path)
+
+def main() -> None:
+    all_books: list[dict] = []
+
+    for page in range(1, 51):
+        html = fetch_page(page)
+        if html is None:
+            break
+
+        books = parse_page(html)
+        all_books.extend(books)
+        print(f"Страница {page}: собрано {len(books)} книг (всего {len(all_books)})")
+
+        time.sleep(0.5)
+
+    if not all_books:
+        print("Не удалось собрать ни одной записи.")
         sys.exit(1)
 
-    books = parse_page(html)
-    print(f"Найдено книг на странице: {len(books)}\n")
-    for book in books[:5]:
-        print(book)
+    save_csv(all_books, "books.csv")
+    save_excel(all_books, "books.xlsx")
+    print(f"\nГотово: {len(all_books)} книг сохранено в books.csv и books.xlsx")
 
 if __name__ == "__main__":
     main()
