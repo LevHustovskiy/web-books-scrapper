@@ -1,6 +1,7 @@
 import sys
 import csv
 import time
+import argparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -76,9 +77,15 @@ def save_excel(rows: list[dict], path: str) -> None:
     wb.save(path)
 
 def main() -> None:
+    arg_parser = argparse.ArgumentParser(description="Парсер books.toscrape.com")
+    arg_parser.add_argument(
+        "--pages", type=int, default=50, help="сколько страниц собрать (по умолчанию все 50)"
+    )
+    args = arg_parser.parse_args()
+
     all_books: list[dict] = []
 
-    for page in range(1, 51):
+    for page in range(1, args.pages + 1):
         html = fetch_page(page)
         if html is None:
             break
